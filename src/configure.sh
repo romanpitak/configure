@@ -49,7 +49,7 @@ to complete the installation.
 ############################################################
 # There should be no need to edit below this line.
 
-help() {
+pr_help() {
     echo -e "${helpMessage}"
     echo -e '\nDEFAULT VALUES:'
     for key in "${!variables[@]}"; do
@@ -59,7 +59,7 @@ help() {
     echo -e "\nAUTHOR:\n\t${author}"
 }
 
-preprocessor() {
+pr_preprocessor() {
     sedFile="$(mktemp)"
     for key in "${!variables[@]}"; do
         echo "${key}=${variables["${key}"]}"
@@ -83,7 +83,7 @@ stdErr='/dev/stderr'
 while [[ $# > 0 ]]; do
     case "${1}" in
         -h|--help)
-            help; exit 0
+            pr_help; exit 0
             ;;
         --in-file=*)
             inFileArg="${1//--in-file=/}"
@@ -107,7 +107,7 @@ while [[ $# > 0 ]]; do
             if test "${variables[$key]+isset}"; then
                 variables["${key}"]="$(echo "${1}" | sed -e 's/^[^=]*=//')"
             else
-                echo "Unknown option \"${1}\"" >> "${stdErr}"; help; exit 63
+                echo "Unknown option \"${1}\"" >> "${stdErr}"; pr_help; exit 63
             fi
             ;;
     esac
@@ -142,7 +142,7 @@ if test 0 -ne ${#overrideVariables[@]}; then
 fi
 
 tmpOutFile="$(mktemp)"
-preprocessor < "${inFile}" > ${tmpOutFile}
+pr_preprocessor < "${inFile}" > ${tmpOutFile}
 cat "${tmpOutFile}" > "${outFile}"
 rm --force "${tmpOutFile}"
 echo -e "${successMessage}" >> "${stdOut}"

@@ -45,10 +45,85 @@ You can now run
 \n\tmake && make install\n
 to complete the installation.
 '
+
+#
+cfg__align_width=${cfg__align_width:-70}
 ###############################################################################
 #                      End of developer configuration
 ###############################################################################
 # There should be no need to edit below this line.
+
+###############################################################################
+# Align cursor
+#
+# Globals:
+#   cfg__align_width
+# Arguments:
+#   None
+# Returns:
+#   None
+###############################################################################
+if command -v tput >/dev/null 2>&1 && test -t 1; then
+    function cfg::align() {
+        tput hpa "${cfg__align_width}"
+    }
+else
+    function cfg::align() {
+        printf "\n%${cfg__align_width}s" ' '
+    }
+fi
+
+function cfg::print_column1() {
+    printf '%s' "$1"
+}
+function cfg::print_column2() {
+    cfg::align
+    printf '%s\n' "$1"
+}
+
+###############################################################################
+# Color output
+#
+# Globals:
+#   None
+# Arguments:
+#   message_text
+# Returns:
+#   None
+###############################################################################
+if command -v tput >/dev/null 2>&1 && test -t 1; then
+    if tput colors >/dev/null 2>&1; then
+
+        function cfg::color_print() {
+            tput setaf $1
+            printf '%s' "$2"
+            tput setaf 9
+        }
+
+        function cfg::color_red()      { cfg::color_print 1 "$1"; }
+        function cfg::color_green()    { cfg::color_print 2 "$1"; }
+        function cfg::color_yellow()   { cfg::color_print 3 "$1"; }
+        function cfg::color_blue()     { cfg::color_print 4 "$1"; }
+        function cfg::color_magenta()  { cfg::color_print 5 "$1"; }
+        function cfg::color_cyan()     { cfg::color_print 6 "$1"; }
+
+    fi
+else # fallback
+    function cfg::color_red()      { printf '%s' "$1"; }
+    function cfg::color_green()    { printf '%s' "$1"; }
+    function cfg::color_yellow()   { printf '%s' "$1"; }
+    function cfg::color_blue()     { printf '%s' "$1"; }
+    function cfg::color_magenta()  { printf '%s' "$1"; }
+    function cfg::color_cyan()     { printf '%s' "$1"; }
+fi
+
+function cfg::message_failed() {
+    cfg::print_column2 "$(cfg::color_red '[FAILED]')"
+}
+
+function cfg::message_ok() {
+    cfg::print_column2 "$(cfg::color_green '[OK]')"
+}
 
 ###############################################################################
 # Print error message
@@ -61,7 +136,7 @@ to complete the installation.
 #   None
 ###############################################################################
 function cfg::error() {
-    printf -- "${1}\n" >> "${cfg__std_err}"
+    printf '\n%s\n' "$(cfg::color_red "${1}")" >> "${cfg__std_err}"
 }
 
 ###############################################################################

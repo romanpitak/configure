@@ -2,11 +2,13 @@
 
 set -euo pipefail
 
+. ./configure
+
 declare -A suffixes
 suffixes['sh']=' # <<< configure'
 
 (sed -n -e '/\S/p' | while read name variable; do
-    echo "Testing: ${name}"
+    cfg::print_column1 "Testing: ${name}"
     inFile="$(ls -1 ./data/${name}.in.* | head -n 1)"
     diffFile="${inFile//.in./.diff.}"
 
@@ -17,7 +19,12 @@ suffixes['sh']=' # <<< configure'
         --in-file="${inFile}" \
         --out-file="${diffFile}"
 
-    diff "${diffFile}" "${inFile//.in./.out.}"
+    if diff "${diffFile}" "${inFile//.in./.out.}"; then
+        cfg::message_ok
+    else
+        cfg::message_fail
+    fi
+
     rm --force "${diffFile}"
 
 done) <<CASES

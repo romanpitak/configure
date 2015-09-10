@@ -10,9 +10,9 @@ and then help your Makefile configure other sources.
 Inside the `./configure` script:
 
 ```bash
-variables['INSTALL_PATH']="${HOME}/bin"
-variables['INTERPRETER']="python3.4"
-variables['VERSION']='0.10.33'
+cfg__variables['INSTALL_PATH']="${HOME}/bin"
+cfg__variables['INTERPRETER']="python3.4"
+cfg__variables['VERSION']='0.10.33'
 ```
 
 Before invoking `make && sudo make install`:

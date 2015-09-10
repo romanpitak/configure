@@ -2,32 +2,33 @@
 
 set -euo pipefail
 
-############################################################
+###############################################################################
 #
-#               Developer configuration
+#                           Developer configuration
 #
-############################################################
+###############################################################################
 
 # Lines with this suffix will be preprocessed
-preprocessorSuffix='# <<< configure'
+cfg__suffix='# <<< configure'
 
 # Usually Makefile
-inFile='Makefile'
+cfg__in_file='Makefile'
 
 # Usually Makefile
-outFile="${inFile}"
+cfg__out_file="${cfg__in_file}"
 
 # Configuration variables.
-# Theese will be read from commandline arguments set by the en-user
-declare -A variables
-# variables['INSTALL_PATH']="${HOME}/bin"
-# variables['VERSION']='0.2.0'
+# Theese will be read from commandline arguments set by the end-user
+# All keys MUST be uppercase
+declare -A cfg__variables
+# cfg__variables['INSTALL_PATH']="${HOME}/bin"
+# cfg__variables['VERSION']='0.2.0'
 
 # Your Name <your.email@example.com>
-author='Roman Piták <roman@pitak.net>'
+cfg__author='Roman Piták <roman@pitak.net>'
 
 #
-helpMessage='
+cfg__help_message='
 This is a ./configure script.
 
 SYNOPSIS:
@@ -38,115 +39,194 @@ OPTIONS:
 \t--invocation-command     : How will you be calling me?
 '
 #
-successMessage='
+cfg__success_message='
 Configuration successfull!
 You can now run
 \n\tmake && make install\n
 to complete the installation.
 '
-############################################################
-#              End of developer configuration
-############################################################
+###############################################################################
+#                      End of developer configuration
+###############################################################################
 # There should be no need to edit below this line.
 
-pr_help() {
-    echo -e "${helpMessage}"
-    echo -e '\nDEFAULT VALUES:'
-    for key in "${!variables[@]}"; do
-        option="--$(echo ${key,,} | sed -e 's/_/-/')"
-        echo -e "\t${option}=${variables[$key]}"
-    done
-    echo -e "\nAUTHOR:\n\t${author}"
+###############################################################################
+# Print error message
+#
+# Globals:
+#   cfg__std_err
+# Arguments:
+#   message_text
+# Returns:
+#   None
+###############################################################################
+function cfg::error() {
+    printf -- "${1}\n" >> "${cfg__std_err}"
 }
 
-pr_preprocessor() {
-    sedFile="$(mktemp)"
-    for key in "${!variables[@]}"; do
-        echo "${key}=${variables["${key}"]}"
-        echo "${key} = ${variables["${key}"]}"
-    done | gawk '
-        BEGIN {FS="="; preprocessorSuffix="'"${preprocessorSuffix}"'"}
+###############################################################################
+# Fatal error. Print error message and exit.
+#
+# Globals:
+#   None
+# Calls:
+#   cfg::error
+# Arguments:
+#   message_text
+#   exit_code
+# Returns:
+#   None
+###############################################################################
+function cfg::fatal() {
+    cfg::error "${1}"
+    exit "${2:-1}"
+}
+
+###############################################################################
+# Print help
+#
+# Globals:
+#   cfg__author
+#   cfg__help_message
+#   cfg__variables
+# Arguments:
+#   None
+# Returns:
+#   None
+###############################################################################
+function cfg::help() {
+    local key
+    local option
+    printf "${cfg__help_message}\n\nDEFAULT VALUES:\n"
+    for key in "${!cfg__variables[@]}"; do
+        option="--$(echo ${key,,} | sed -e 's/_/-/')"
+        printf "\t${option}=${cfg__variables[$key]}\n"
+    done
+    printf "\nAUTHOR:\n\t${cfg__author}\n"
+}
+
+###############################################################################
+# Replace preprocessor directives with proper values
+#
+# Reads from stdin and writes into stdout.
+#
+# Globals:
+#   cfg__suffix
+#   cfg__variables
+# Arguments:
+#   None
+# Returns:
+#   None
+###############################################################################
+function cfg::preprocessor() {
+    local key
+    local sed_script_file
+    sed_script_file="$(mktemp)"
+    for key in "${!cfg__variables[@]}"; do
+        printf "${key}=${cfg__variables["${key}"]}\n"
+        printf "${key} = ${cfg__variables["${key}"]}\n"
+    done | gawk \
+        --assign FS="=" \
+        --assign ppsuffix="${cfg__suffix}" '
         {
             gsub(/\//,"\\/", $2)
-            gsub(/\//,"\\/", preprocessorSuffix)
-            print "s/^" $1 "=.*" preprocessorSuffix "$/" $1 "=" $2 preprocessorSuffix "/"
+            gsub(/\//,"\\/", ppsuffix)
+            print "s/^" $1 "=.*" ppsuffix "$/" $1 "=" $2 ppsuffix "/"
         }
-    '  > "${sedFile}"
-    sed --file="${sedFile}"
-    rm "${sedFile}"
+        ' > "${sed_script_file}"
+    sed --file="${sed_script_file}"
+    rm --force "${sed_script_file}"
 }
 
-pr_run_preprocessor() {
-    if test -n "${inFileArg+isset}" && test -n "${outFileArg+isset}"; then
+###############################################################################
+# Prepair preprocessor environment and run preprocessor
+#
+# Globals:
+#   cfg__in_file_arg
+#   cfg__in_file
+#   cfg__out_file_arg
+#   cfg__out_file
+#   cfg__override_variables
+#   cfg__success_message
+#   cfg__std_out
+#   cfg__variables
+# Arguments:
+#   None
+# Returns:
+#   None
+###############################################################################
+function cfg::run_preprocessor() {
+    if test -n "${cfg__in_file_arg:-}" && test -n "${cfg__out_file_arg:-}"; then
 
-        if test '-' == "${inFileArg}"; then
-            inFile='/dev/stdin'
+        if test '-' == "${cfg__in_file_arg}"; then
+            cfg__in_file='/dev/stdin'
         else
-            inFile="${inFileArg}"
+            cfg__in_file="${cfg__in_file_arg}"
         fi
 
-        if test '-' == "${outFileArg}"; then
-            outFile='/dev/stdout'
+        if test '-' == "${cfg__out_file_arg}"; then
+            cfg__out_file='/dev/stdout'
         else
-            outFile="${outFileArg}"
+            cfg__out_file="${cfg__out_file_arg}"
         fi
 
-    elif test -n "${inFileArg+isset}" || test -n "${outFileArg+isset}"; then
-        echo '--in-file and --out-file must always be together' >> "${stdErr}"
-        exit 1
+    elif test -n "${cfg__in_file_arg:-}" || test -n "${cfg__out_file_arg:-}"; then
+        cfg::fatal '--in-file and --out-file must always be together'
     fi
 
-    if test 0 -ne ${#overrideVariables[@]}; then
-        unset variables
-        declare -A variables
-        for key in ${!overrideVariables[@]}; do
-            variables["${key}"]="${overrideVariables["${key}"]}"
+    if test 0 -ne ${#cfg__override_variables[@]}; then
+        local key
+        unset cfg__variables
+        declare -A cfg__variables
+        for key in ${!cfg__override_variables[@]}; do
+            cfg__variables["${key}"]="${cfg__override_variables["${key}"]}"
         done
     fi
 
-    tmpOutFile="$(mktemp)"
-    pr_preprocessor < "${inFile}" > ${tmpOutFile}
-    cat "${tmpOutFile}" > "${outFile}"
-    rm --force "${tmpOutFile}"
-    echo -e "${successMessage}" >> "${stdOut}"
+    local tmp_out_file="$(mktemp)"
+    cfg::preprocessor < "${cfg__in_file}" > ${tmp_out_file}
+    cat "${tmp_out_file}" > "${cfg__out_file}"
+    rm --force "${tmp_out_file}"
+    printf "${cfg__success_message}" >> "${cfg__std_out}"
 }
 
-declare -A overrideVariables
-overrideVariables=()
-stdOut='/dev/stdout'
-stdErr='/dev/stderr'
+declare -A cfg__override_variables
+cfg__override_variables=()
+cfg__std_out='/dev/stdout'
+cfg__std_err='/dev/stderr'
 while [[ $# > 0 ]]; do
     case "${1}" in
         -h|--help)
-            pr_help; exit 0
+            cfg::help; exit 0
             ;;
         --in-file=*)
-            inFileArg="${1//--in-file=/}"
+            cfg__in_file_arg="${1//--in-file=/}"
             ;;
         --out-file=*)
-            outFileArg="${1//--out-file=/}"
+            cfg__out_file_arg="${1//--out-file=/}"
             ;;
         --preprocessor-suffix=*)
-            preprocessorSuffix="${1//--preprocessor-suffix=/}"
+            cfg__suffix="${1//--preprocessor-suffix=/}"
             ;;
         --silent)
-            stdOut='/dev/null'
+            cfg__std_out='/dev/null'
             ;;
         --variable-*)  # non-default variables
-            assignment="${1//--variable-/}"
-            overrideVariables["${assignment//=*/}"]="${assignment//*=/}"
+            cfg__assignment="${1//--variable-/}"
+            cfg__override_variables["${cfg__assignment//=*/}"]="${cfg__assignment//*=/}"
             ;;
         *)  # defaultVariables processing
             # convert --install-path to INSTALL_PATH
-            key="$(echo "${1^^}" | sed -e 's/^--//' -e 's/-/_/' -e 's/=.*$//')"
-            if test "${variables[$key]+isset}"; then
-                variables["${key}"]="$(echo "${1}" | sed -e 's/^[^=]*=//')"
+            cfg__key="$(echo "${1^^}" | sed -e 's/^--//' -e 's/-/_/' -e 's/=.*$//')"
+            if test "${cfg__variables[$cfg__key]+isset}"; then
+                cfg__variables["${cfg__key}"]="$(echo "${1}" | sed -e 's/^[^=]*=//')"
             else
-                echo "Unknown option \"${1}\"" >> "${stdErr}"; pr_help; exit 63
+                cfg::help
+                cfg::fatal "\nUnknown option \"${1}\"" 63
             fi
             ;;
     esac
     shift
 done
 
-pr_run_preprocessor
+cfg::run_preprocessor

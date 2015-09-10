@@ -190,6 +190,45 @@ function cfg::run_preprocessor() {
     printf "${cfg__success_message}" >> "${cfg__std_out}"
 }
 
+###############################################################################
+# Unset global variables and functions you don't want to be sourced.
+#
+# Globals:
+#   None
+# Arguments:
+#   None
+# Returns:
+#   None
+###############################################################################
+function cfg::unset_globals() {
+    unset cfg__author
+    unset cfg__assignment
+    unset cfg__help_message
+    unset cfg__in_file
+    unset cfg__is_sourced
+    unset cfg__key
+    unset cfg__out_file
+    unset cfg__override_variables
+    unset cfg__std_err
+    unset cfg__std_out
+    unset cfg__success_message
+    unset cfg__suffix
+
+    unset -f cfg::help
+    unset -f cfg::preprocessor
+    unset -f cfg::run_preprocessor
+}
+
+###############################################################################
+#                     command line arguments processing
+###############################################################################
+
+# Before shifting the arguments, check if the script is being sourced.
+if test "$0" != "$BASH_SOURCE"; then
+    cfg__is_sourced='True'
+fi
+
+# process commandline arguments
 declare -A cfg__override_variables
 cfg__override_variables=()
 cfg__std_out='/dev/stdout'
@@ -229,4 +268,12 @@ while [[ $# > 0 ]]; do
     shift
 done
 
-cfg::run_preprocessor
+###############################################################################
+#                                  main
+###############################################################################
+
+if test -n "${cfg__is_sourced:-}"; then
+    cfg::unset_globals
+else
+    cfg::run_preprocessor
+fi

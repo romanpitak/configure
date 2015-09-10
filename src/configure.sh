@@ -76,6 +76,41 @@ pr_preprocessor() {
     rm "${sedFile}"
 }
 
+pr_run_preprocessor() {
+    if test -n "${inFileArg+isset}" && test -n "${outFileArg+isset}"; then
+
+        if test '-' == "${inFileArg}"; then
+            inFile='/dev/stdin'
+        else
+            inFile="${inFileArg}"
+        fi
+
+        if test '-' == "${outFileArg}"; then
+            outFile='/dev/stdout'
+        else
+            outFile="${outFileArg}"
+        fi
+
+    elif test -n "${inFileArg+isset}" || test -n "${outFileArg+isset}"; then
+        echo '--in-file and --out-file must always be together' >> "${stdErr}"
+        exit 1
+    fi
+
+    if test 0 -ne ${#overrideVariables[@]}; then
+        unset variables
+        declare -A variables
+        for key in ${!overrideVariables[@]}; do
+            variables["${key}"]="${overrideVariables["${key}"]}"
+        done
+    fi
+
+    tmpOutFile="$(mktemp)"
+    pr_preprocessor < "${inFile}" > ${tmpOutFile}
+    cat "${tmpOutFile}" > "${outFile}"
+    rm --force "${tmpOutFile}"
+    echo -e "${successMessage}" >> "${stdOut}"
+}
+
 declare -A overrideVariables
 overrideVariables=()
 stdOut='/dev/stdout'
@@ -114,35 +149,4 @@ while [[ $# > 0 ]]; do
     shift
 done
 
-if test -n "${inFileArg+isset}" && test -n "${outFileArg+isset}"; then
-
-    if test '-' == "${inFileArg}"; then
-        inFile='/dev/stdin'
-    else
-        inFile="${inFileArg}"
-    fi
-
-    if test '-' == "${outFileArg}"; then
-        outFile='/dev/stdout'
-    else
-        outFile="${outFileArg}"
-    fi
-
-elif test -n "${inFileArg+isset}" || test -n "${outFileArg+isset}"; then
-    echo '--in-file and --out-file must always be together' >> "${stdErr}"
-    exit 1
-fi
-
-if test 0 -ne ${#overrideVariables[@]}; then
-    unset variables
-    declare -A variables
-    for key in ${!overrideVariables[@]}; do
-        variables["${key}"]="${overrideVariables["${key}"]}"
-    done
-fi
-
-tmpOutFile="$(mktemp)"
-pr_preprocessor < "${inFile}" > ${tmpOutFile}
-cat "${tmpOutFile}" > "${outFile}"
-rm --force "${tmpOutFile}"
-echo -e "${successMessage}" >> "${stdOut}"
+pr_run_preprocessor

@@ -104,6 +104,7 @@ if command -v tput >/dev/null 2>&1 && tput colors >/dev/null 2>&1 && test -t 1; 
     function cfg::color_magenta()  { cfg::color_print 5 "$1"; }
     function cfg::color_cyan()     { cfg::color_print 6 "$1"; }
 else # fallback
+    function cfg::color_print()    { printf '%s' "$2"; }
     function cfg::color_red()      { printf '%s' "$1"; }
     function cfg::color_green()    { printf '%s' "$1"; }
     function cfg::color_yellow()   { printf '%s' "$1"; }

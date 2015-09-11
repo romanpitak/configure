@@ -91,23 +91,18 @@ function cfg::print_column2() {
 # Returns:
 #   None
 ###############################################################################
-if command -v tput >/dev/null 2>&1 && test -t 1; then
-    if tput colors >/dev/null 2>&1; then
-
-        function cfg::color_print() {
-            tput setaf $1
-            printf '%s' "$2"
-            tput setaf 9
-        }
-
-        function cfg::color_red()      { cfg::color_print 1 "$1"; }
-        function cfg::color_green()    { cfg::color_print 2 "$1"; }
-        function cfg::color_yellow()   { cfg::color_print 3 "$1"; }
-        function cfg::color_blue()     { cfg::color_print 4 "$1"; }
-        function cfg::color_magenta()  { cfg::color_print 5 "$1"; }
-        function cfg::color_cyan()     { cfg::color_print 6 "$1"; }
-
-    fi
+if command -v tput >/dev/null 2>&1 && tput colors >/dev/null 2>&1 && test -t 1; then
+    function cfg::color_print() {
+        tput setaf $1
+        printf '%s' "$2"
+        tput setaf 9
+    }
+    function cfg::color_red()      { cfg::color_print 1 "$1"; }
+    function cfg::color_green()    { cfg::color_print 2 "$1"; }
+    function cfg::color_yellow()   { cfg::color_print 3 "$1"; }
+    function cfg::color_blue()     { cfg::color_print 4 "$1"; }
+    function cfg::color_magenta()  { cfg::color_print 5 "$1"; }
+    function cfg::color_cyan()     { cfg::color_print 6 "$1"; }
 else # fallback
     function cfg::color_red()      { printf '%s' "$1"; }
     function cfg::color_green()    { printf '%s' "$1"; }
